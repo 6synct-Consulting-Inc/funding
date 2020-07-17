@@ -1,6 +1,0 @@
---extra-index-url=https://dash-cli-6synct.plotly.host/Docs/packages
-dash-design-kit==1.4.1
-dash==1.9.0
-gunicorn==19.9.0
-numpy>=1.16.2
-pandas>=0.24.2
