@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import DateTime as dt
+
 #import dash
 #import dash_core_components as dcc
 #import dash_design_kit as ddk
@@ -58,7 +60,7 @@ def clean_data(df):
                                  "agreemen_3": "Start_Date", 
                                  "program_na": "Funding_Program_Name",
                                  "projected_": "Spend_Date",
-                                 "federal__1": "Federal_Electoral_District",
+                                 "federal__1": "Electoral_District",
                                  "latitude":   "Latitude",
                                  "longitude":  "Longitude"
                                 }
@@ -100,12 +102,18 @@ df.loc[(df.naics_sect == 'Information and cultural industries'),'naics_sect']='I
 df.loc[(df.naics_sect == 'Professional, scientific and technical services'),'naics_sect']='Prof., scientific & technical services'
 df.loc[(df.naics_sect == 'Mining, quarrying, and oil and gas extraction'),'naics_sect']='Mining, quarrying, oil, gas extract.'
 
+# Add column for Year and Quarter
+df.insert(loc=0, column='Year_Quarter', value=df['Start_Date'])
+df['Year_Quarter'] = pd.to_datetime(df['Year_Quarter'])
+df['Year_Quarter'] = df['Year_Quarter'].dt.to_period("Q")
+df['Year_Quarter'] = df['Year_Quarter'].astype(str)
+
+# Clean upper / lower case
+df['Project'] = df['Project'].str.lower()
+df['Detailed_Description'] = df['Detailed_Description'].str.lower()
+#df = df.applymap(lambda s:s.lower() if type(s) == str else s)
+
 df = df.dropna()
-
-
-
-
-
 """
 ODDS AND ENDS
 
