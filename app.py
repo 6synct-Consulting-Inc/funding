@@ -18,13 +18,13 @@ server = app.server  # expose server variable for Procfile
 # create series for dropdown menus, and remove NaN [ cannot use .drop() on a list ]
 province_series = df['Prov_Abbreviation']
 province_series.dropna(inplace=True)
-district_series = df['Federal_Electoral_District']
+district_series = df['Electoral_District']
 district_series.dropna(inplace=True)
 donor_series = df['Funding_Program_Name']
 donor_series.dropna(inplace=True)
 naics_sect_series = df['naics_sect']
 naics_sect_series.dropna(inplace=True)
-fed_jurisdiction_series = df['Federal_Electoral_District']
+fed_jurisdiction_series = df['Electoral_District']
 fed_jurisdiction_series.dropna(inplace=True)
 year_series = df['_merge']
 year_series.dropna(inplace=True)
@@ -62,7 +62,7 @@ def print_mapbox(dataframe):
             bearing=0,
             # center=dict(lat=50.44,lon=-91.009), #as data is altered, will refresh to same 'center'
             pitch=0,
-            zoom=5.5
+            zoom=2.8
         ),
     )
 
@@ -72,14 +72,14 @@ def print_timeline(dataframe):
     timetable = pd.pivot_table(dataframe,
                                values='$_Amount',
                                index=['Company_ID', 'Funding_Program_Name'],
-                               columns=['Start_Date'],
+                               columns=['Year_Quarter'],
                                aggfunc=np.sum
                                ).sum()
 
     figure = px.bar(timetable.reset_index().rename(columns={0: "Total_Funding_$"}),
-                        x='Start_Date',
+                        x='Year_Quarter',
                         y='Total_Funding_$',
-                        range_x=['2018-04-01', '2020-12-31']
+                        #range_x=['2018-04-01', '2020-12-31']
                         )
     return figure
 
@@ -105,23 +105,6 @@ def print_donor_graph(dataframe):
         figure.add_trace(go.Box(x=dataframe[i], name=i, marker_color='#ffad33'))
 
     return figure
-"""
-def print_companies_table(dataframe):
-    dash_table.DataTable(
-        data=dataframe.to_dict("rows"),
-        columns=[{"name": i, "id": i} for i in dataframe.columns],
-        style_as_list_view=True,
-        style_header={"fontWeight": "bold", "textTransform": "capitalize"},
-        style_data_conditional=[
-            {
-                "if": {"row_index": "even"},
-                "backgroundColor": "var(--report_background_page)",
-            }
-        ],
-    ),
-
-    return
-"""
 
 
 # ddk.Card(
@@ -165,7 +148,12 @@ app.layout = ddk.App(
                         ),
                     ]
             ),
-
+            ddk.Card(
+                children=[
+                    ddk.CardHeader(title='Total Funding'),
+                    ddk.Graph(id='treemap')
+                    ]
+            ),
         ]
     ),
     ddk.Block(
@@ -185,26 +173,25 @@ app.layout = ddk.App(
                                 id='companies-table',
                                 columns=[{"name": i, "id": i} for i in df[['Company_Name', 'Project', '$_Amount', 'Start_Date', 'Spend_Date']].columns],
                                 fill_width=False,
-                                #style_as_list_view=True,
-                                #filter_action='custom',
-                                #filter_query='',
+                                filter_action='native',
+                                #filter_query=''
                                 sort_action='native',
-                                page_size=5,
-                                #sort_mode='multi',
+                                page_size=7,
+                                sort_mode='multi',
                                 style_header={"fontWeight": "bold", "textTransform": "capitalize"},
                                 style_cell_conditional=[
                                     {'if': {'column_id': '$_Amount'},
-                                     'width': '10%'},
+                                     'width': '12%'},
                                     {'if': {'column_id': 'Start_Date'},
-                                     'width': '10%'},
+                                     'width': '12%'},
                                     {'if': {'column_id': 'Spend_Date'},
-                                     'width': '10%'},
+                                     'width': '12%'},
                                     {'if': {'column_id': 'Company_Name'},
                                      'width': '20%'},
                                 ],
                                 style_cell={
                                     'whiteSpace': 'normal',
-                                    'height': 'auto',
+                                    #'height': 'auto',
                                 },
                                 style_data_conditional=[
                                         {
@@ -215,30 +202,21 @@ app.layout = ddk.App(
                             ),
                         ]
             ),
-            ddk.Block(
-                width=60,
+            ddk.Card(
                 children=[
-                    ddk.Card(
-                        children=[
-                            ddk.CardHeader(title='Funding by donor'),
-                            ddk.Graph(id='donor-graph')
-                        ]
-                    ),
+                    ddk.CardHeader(title='Funding by donor'),
+                    ddk.Graph(id='donor-graph')
                 ]
             ),
-            ddk.Block(
-                width=40,
+            ddk.Card(
                 children=[
-                    ddk.Card(
-                        children=[
-                         ddk.CardHeader(title='Total Funding'),
-                         ddk.Graph(id='treemap')
-                        ]
-                    ),
+                    ddk.CardHeader(title='Funding Commitments - by Start Date (YR/Q)'),
+                    ddk.Graph(id='timeline-graph'),
                 ]
-            )
+            ),
         ]
     ),
+
     ddk.Block(
         width=20,
         children=[
@@ -255,22 +233,9 @@ app.layout = ddk.App(
                                 ],
                                 multi=True,
                                 clearable = False,
-                                value=['ON'] #province_list
+                                value=province_list #province_list
                             ),
                             label='Province'
-                        ),
-                        ddk.ControlItem(
-                            dcc.Dropdown(
-                                id = 'district-dropdown',
-                                options=[
-                                    {'label':i,'value':i}
-                                    for i in district_list
-                                ],
-                                multi=True,
-                                clearable = False,
-                                value='48017' #district_list
-                            ),
-                            label='Federal Electoral District'
                         ),
                         ddk.ControlItem(
                             dcc.Dropdown(
@@ -293,7 +258,7 @@ app.layout = ddk.App(
                                     for i in year_list
                                 ],
                                 multi=False,
-                                clearable = False,
+                                clearable=False,
                                 value='2019_20 Only'
                             ),
                             label='Year'
@@ -319,89 +284,18 @@ app.layout = ddk.App(
     ]
 )
 
-"""
-    ddk.ControlCard(width=20, id = 'map-controls',
-        children=[
-            ddk.ControlItem(
-                dcc.Dropdown(
-                    id = 'donor-dropdown',
-                    options=[
-                        {'label': i, 'value': i}
-                        for i in donor_list
-                    ],
-                    multi=True, #allow for multiple selections
-                    value=['IRAP - Contributions to Firms'], #default value on app load
-                    clearable = False,
-                ),
-                label='Donor Program'   
-            ),
-            ddk.ControlItem(
-                dcc.Dropdown(
-                    id = 'naics-dropdown',
-                    options=[
-                        {'label':i,'value':i}
-                        for i in naics_sect_list
-                    ],
-                    multi=True, 
-                    value=['Manufacturing'], 
-                    clearable = False,
-                ),
-                label='NAICS Sector'   
-            ),
-            ddk.ControlItem(
-                dcc.Dropdown(
-                    id = 'year-dropdown',
-                    options=[
-                        {'label':i,'value':i}
-                        for i in year_list
-                    ],
-                    multi=False,  
-                    clearable = False,
-                    value='both' 
-                ),               
-                label='Year'
-            ),
-            ddk.ControlItem(
-                dcc.Dropdown(
-                    id = 'province-dropdown',
-                    options=[
-                        {'label':i,'value':i}
-                        for i in province_list
-                    ],
-                    multi=True, 
-                    clearable = False, 
-                    value=province_list 
-                ),
-                label='Province'   
-            ),
-        ]
-    ),
-       ddk.Card(width = 40, children=[
-        ddk.CardHeader(title='Provincial Treemap'),
-        ddk.Graph(id='treemap')
-    ]),
-    ddk.Card(width = 80, children=[
-        ddk.CardHeader(title='Geographic Representation of Funding'),
-        dcc.Graph(id='map-graph')
-    ]),
-    ddk.Card(width = 50, children=[
-        ddk.CardHeader(title='Donor Distribution of Funding'),
-        dcc.Graph(id='donor-graph')
-    ]), 
-"""
-
 
 
 # end of app.layout
 
 @app.callback(
-    [Output('treemap', 'figure'),  Output('map-graph', 'figure')], #Output('timeline-graph', 'figure')],
+    [Output('treemap', 'figure'),  Output('map-graph', 'figure'), Output('timeline-graph', 'figure')],
     [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
 )
 
 def update_app(input_donor, input_naics, input_year, input_province):
     dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
-    return print_treemap(dff), print_mapbox(dff)#, print_timeline(dff)
+    return print_treemap(dff), print_mapbox(dff), print_timeline(dff)
 
 
 @app.callback(
