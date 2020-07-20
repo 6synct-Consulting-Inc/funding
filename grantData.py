@@ -20,8 +20,8 @@ pd.set_option('display.width', None)
 pd.set_option('max_colwidth', None)
 
 # read in annual data files to dataframes
-Funding_2018_19 = pd.read_csv("2018-19 Grants and Contributions.csv", low_memory=False)
-Funding_2019_20 = pd.read_csv("2019-20 Grants and Contributions.csv", low_memory=False)
+Funding_2018_19 = pd.read_csv("assets/2018-19 Grants and Contributions.csv", low_memory=False)
+Funding_2019_20 = pd.read_csv("assets/2019-20 Grants and Contributions.csv", low_memory=False)
 
 """
 SHOULD WE BE REMOVING DUPLICATES LIKE THIS? 
@@ -72,6 +72,7 @@ Dataset_comparison_companies = clean_data(Funding_2019_20)[['Company_ID']].merge
 Dataset_comparison_companies.groupby(['_merge'])
 Dataset_comparison_companies["_merge"] = Dataset_comparison_companies["_merge"].replace("right_only", "2018_19 Only")
 Dataset_comparison_companies["_merge"] = Dataset_comparison_companies["_merge"].replace("left_only", "2019_20 Only")
+Dataset_comparison_companies["_merge"] = Dataset_comparison_companies["_merge"].replace("both", "Multi-Year Projects")
 Dataset_comparison_companies.drop_duplicates(keep='first').set_index('Company_ID').reset_index()
 
 # drop companies with missing datapoints
@@ -100,12 +101,6 @@ df.loc[(df.naics_sect == 'Professional, scientific and technical services'),'nai
 df.loc[(df.naics_sect == 'Mining, quarrying, and oil and gas extraction'),'naics_sect']='Mining, quarrying, oil, gas extract.'
 
 df = df.dropna()
-
-
-
-
-
-
 
 
 
