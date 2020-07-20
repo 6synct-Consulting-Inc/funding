@@ -18,6 +18,8 @@ server = app.server  # expose server variable for Procfile
 # create series for dropdown menus, and remove NaN [ cannot use .drop() on a list ]
 province_series = df['Prov_Abbreviation']
 province_series.dropna(inplace=True)
+district_series = df['Federal_Electoral_District']
+district_series.dropna(inplace=True)
 donor_series = df['Funding_Program_Name']
 donor_series.dropna(inplace=True)
 naics_sect_series = df['naics_sect']
@@ -29,6 +31,7 @@ year_series.dropna(inplace=True)
 
 # lists of unique values for use in dropdown menus
 province_list = province_series.unique().tolist()
+district_list = district_series.unique().tolist()
 donor_list = donor_series.unique().tolist()
 year_list = year_series.unique().tolist()
 naics_sect_list = naics_sect_series.unique().tolist()
@@ -102,7 +105,7 @@ def print_donor_graph(dataframe):
 
     return figure
 """
-def print_donor_table(dataframe):
+def print_companies_table(dataframe):
     dash_table.DataTable(
         data=dataframe.to_dict("rows"),
         columns=[{"name": i, "id": i} for i in dataframe.columns],
@@ -120,9 +123,15 @@ def print_donor_table(dataframe):
 """
 
 
+# ddk.Card(
+#            children=[
+#                ddk.CardHeader(title='Funding Timeline'),
+#                ddk.Graph(id='timeline-graph'),
+#            ]
+#        ),
+
 app.layout = ddk.App(
     [
-
     ddk.Header([
         ddk.Title('NRC IRAP - Corporate Funding in Canada from 2018-2020'),
 
@@ -168,19 +177,49 @@ app.layout = ddk.App(
                     ddk.Graph(id='map-graph'),
                 ]
             ),
-            #ddk.Card(
-            #            children=[
-            #                ddk.CardHeader(title='Funding Timeline'),
-            #                ddk.Graph(id='timeline-graph'),
-            #            ]
-            #        ),
+            ddk.Card(
+                        children=[
+                            ddk.CardHeader(title='Companies'),
+                            ddk.DataTable(
+                                id='companies-table',
+                                columns=[{"name": i, "id": i} for i in df[['Company_Name', 'Project', '$_Amount', 'Start_Date', 'Spend_Date']].columns],
+                                fill_width=False,
+                                #style_as_list_view=True,
+                                #filter_action='custom',
+                                #filter_query='',
+                                sort_action='native',
+                                page_size=5,
+                                #sort_mode='multi',
+                                style_header={"fontWeight": "bold", "textTransform": "capitalize"},
+                                style_cell_conditional=[
+                                    {'if': {'column_id': '$_Amount'},
+                                     'width': '10%'},
+                                    {'if': {'column_id': 'Start_Date'},
+                                     'width': '10%'},
+                                    {'if': {'column_id': 'Spend_Date'},
+                                     'width': '10%'},
+                                    {'if': {'column_id': 'Company_Name'},
+                                     'width': '20%'},
+                                ],
+                                style_cell={
+                                    'whiteSpace': 'normal',
+                                    'height': 'auto',
+                                },
+                                style_data_conditional=[
+                                        {
+                                            "if": {"row_index": "even"},
+                                            "backgroundColor": "var(--report_background_page)",
+                                        }
+                                    ],
+                            ),
+                        ]
+            ),
             ddk.Block(
                 width=60,
                 children=[
                     ddk.Card(
                         children=[
                             ddk.CardHeader(title='Funding by donor'),
-                            #dash_table.DataTable(id='donor-table'),
                             ddk.Graph(id='donor-graph')
                         ]
                     ),
@@ -193,7 +232,7 @@ app.layout = ddk.App(
                         children=[
                          ddk.CardHeader(title='Total Funding'),
                          ddk.Graph(id='treemap')
-                     ]
+                        ]
                     ),
                 ]
             )
@@ -218,6 +257,19 @@ app.layout = ddk.App(
                                 value=['ON'] #province_list
                             ),
                             label='Province'
+                        ),
+                        ddk.ControlItem(
+                            dcc.Dropdown(
+                                id = 'district-dropdown',
+                                options=[
+                                    {'label':i,'value':i}
+                                    for i in district_list
+                                ],
+                                multi=True,
+                                clearable = False,
+                                value='48017' #district_list
+                            ),
+                            label='Federal Electoral District'
                         ),
                         ddk.ControlItem(
                             dcc.Dropdown(
@@ -364,6 +416,15 @@ def update_app(input_donor, input_naics, input_year, input_province):
                                        # ,'naics_sect', 'City', 'Province', 'Start Date', 'Projected Spend Date'
                                        columns=['Funding_Program_Name'], aggfunc=np.sum)
     return print_donor_graph(table_fundingtype)#, print_donor_table(table_fundingtype)
+
+@app.callback(
+    Output('companies-table', 'data'),
+    [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
+)
+
+def update_app(input_donor, input_naics, input_year, input_province):
+    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
+    return dff.to_dict("rows")
 
 
 if __name__ == '__main__':
