@@ -57,7 +57,7 @@ def clean_data(df):
                                  "descriptio": "Detailed_Description",
                                  "agreemen_3": "Start_Date", 
                                  "program_na": "Funding_Program_Name",
-                                 "projected_": "Projected_Spend_Date",
+                                 "projected_": "Spend_Date",
                                  "federal__1": "Federal_Electoral_District",
                                  "latitude":   "Latitude",
                                  "longitude":  "Longitude"
