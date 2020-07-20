@@ -52,6 +52,7 @@ def print_mapbox(dataframe):
                                opacity=.8,
                                zoom=4,
                                size='$_Amount',
+                               color_discrete_sequence=['orange']
                                )
     figure.update_layout(
         autosize=True,
@@ -101,7 +102,7 @@ def print_donor_graph(dataframe):
                       )
     columns = list(dataframe)
     for i in columns:
-        figure.add_trace(go.Box(x=dataframe[i], name=i))
+        figure.add_trace(go.Box(x=dataframe[i], name=i, marker_color='#ffad33'))
 
     return figure
 """
