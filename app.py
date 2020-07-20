@@ -87,6 +87,8 @@ def print_treemap(dataframe):
     figure = px.treemap(dataframe.dropna(),
                         path=['Province', 'naics_sect', 'Funding_Program_Name'],
                         values='$_Amount',
+                        color='$_Amount',
+                        color_continuous_scale='Oranges',
                         #hover_data={'$_Amount': True}  # This statement doesnt work -DFL
                         # perhaps can turn off hover in general, and display $_Amount as text instead
                         # width=400,
@@ -167,6 +169,12 @@ app.layout = ddk.App(
                 ]
             ),
             ddk.Card(
+                children=[
+                    ddk.CardHeader(title='Funding by donor'),
+                    ddk.Graph(id='donor-graph')
+                ]
+            ),
+            ddk.Card(
                         children=[
                             ddk.CardHeader(title='Companies'),
                             ddk.DataTable(
@@ -181,13 +189,15 @@ app.layout = ddk.App(
                                 style_header={"fontWeight": "bold", "textTransform": "capitalize"},
                                 style_cell_conditional=[
                                     {'if': {'column_id': '$_Amount'},
-                                     'width': '12%'},
+                                     'width': '10%'},
                                     {'if': {'column_id': 'Start_Date'},
-                                     'width': '12%'},
+                                     'width': '10%'},
                                     {'if': {'column_id': 'Spend_Date'},
-                                     'width': '12%'},
+                                     'width': '10%'},
                                     {'if': {'column_id': 'Company_Name'},
                                      'width': '20%'},
+                                    {'if': {'column_id': 'Project'},
+                                     'width': '50%'},
                                 ],
                                 style_cell={
                                     'whiteSpace': 'normal',
@@ -202,12 +212,7 @@ app.layout = ddk.App(
                             ),
                         ]
             ),
-            ddk.Card(
-                children=[
-                    ddk.CardHeader(title='Funding by donor'),
-                    ddk.Graph(id='donor-graph')
-                ]
-            ),
+
             ddk.Card(
                 children=[
                     ddk.CardHeader(title='Funding Commitments - by Start Date (YR/Q)'),
