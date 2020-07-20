@@ -1,13 +1,11 @@
 import dash
 import dash_core_components as dcc
-import dash_html_components as html
 import plotly.express as px
-import plotly.graph_objects as go
-import pandas as pd
-#import plotly.io as pio
-import plotly.graph_objects as go
 from dash.dependencies import Input, Output
 import dash_design_kit as ddk
+import dash_html_components as html
+import plotly.graph_objects as go
+import dash_table
 
 from grantData import *
 from mapbox_token import *
@@ -36,24 +34,246 @@ year_list = year_series.unique().tolist()
 naics_sect_list = naics_sect_series.unique().tolist()
 fed_jurisdiction_list = fed_jurisdiction_series.unique().tolist()
 
-app.layout = ddk.App([
+
+def print_mapbox(dataframe):
+    figure = px.scatter_mapbox(dataframe,
+                               title='Location & Corporation of IRAP Grant',
+                               hover_name='Company_Name',
+                               #hover_data={'Funding_Program_Name': True, 'Latitude': False, 'Longitude': False}, # This statement doesnt work -DFL
+                               lat="Latitude", lon="Longitude",
+                               # template='plotly_dark',
+                               # color ='naics_sect', #color_continuous_scale=px.colors.sequential.Darkmint,
+                               # color ='NAICS_Sector', color_continuous_scale=px.colors.sequential.Darkmint,
+                               mapbox_style='dark',
+                               size_max=45,
+                               opacity=.8,
+                               zoom=4,
+                               size='$_Amount',
+                               )
+    figure.update_layout(
+        autosize=True,
+        hovermode='closest',
+        mapbox=dict(
+            accesstoken=mapbox_token,
+            bearing=0,
+            # center=dict(lat=50.44,lon=-91.009), #as data is altered, will refresh to same 'center'
+            pitch=0,
+            zoom=5.5
+        ),
+    )
+
+    return figure
+
+def print_timeline(dataframe):
+    timetable = pd.pivot_table(dataframe,
+                               values='$_Amount',
+                               index=['Company_ID', 'Funding_Program_Name'],
+                               columns=['Start_Date'],
+                               aggfunc=np.sum
+                               ).sum()
+
+    figure = px.bar(timetable.reset_index().rename(columns={0: "Total_Funding_$"}),
+                        x='Start_Date',
+                        y='Total_Funding_$',
+                        range_x=['2018-04-01', '2020-12-31']
+                        )
+    return figure
+
+def print_treemap(dataframe):
+    figure = px.treemap(dataframe.dropna(),
+                        path=['Province', 'naics_sect', 'Funding_Program_Name'],
+                        values='$_Amount',
+                        #hover_data={'$_Amount': True}  # This statement doesnt work -DFL
+                        # perhaps can turn off hover in general, and display $_Amount as text instead
+                        # width=400,
+                        )
+    return figure
+
+def print_donor_graph(dataframe):
+    figure = go.Figure()
+    figure.update_layout(showlegend=False,
+                      height=500,
+                      # title_text='Descriptives',
+                      xaxis_title='Funding Amount ($CAD)',
+                      )
+    columns = list(dataframe)
+    for i in columns:
+        figure.add_trace(go.Box(x=dataframe[i], name=i))
+
+    return figure
+"""
+def print_donor_table(dataframe):
+    dash_table.DataTable(
+        data=dataframe.to_dict("rows"),
+        columns=[{"name": i, "id": i} for i in dataframe.columns],
+        style_as_list_view=True,
+        style_header={"fontWeight": "bold", "textTransform": "capitalize"},
+        style_data_conditional=[
+            {
+                "if": {"row_index": "even"},
+                "backgroundColor": "var(--report_background_page)",
+            }
+        ],
+    ),
+
+    return
+"""
+
+
+app.layout = ddk.App(
+    [
 
     ddk.Header([
-        ddk.Logo('6synctLogo.png'), ### WHY IS THE LOGO NOT LOADING???? it is saved to folder..
-        ddk.Title('Available Corporate Funding in Canada'),
+        ddk.Title('NRC IRAP - Corporate Funding in Canada from 2018-2020'),
+
+        #ddk.Logo("assets/6SYNCT Logo_Black.png",
+                 #style={
+                  #   "height": "40px",
+                  #   "align-self": "flex-end",
+                 #    "width": "auto",
+                 #   },
+                # ),
+
     ]),
 
-    ddk.Card(width=100,children=[
-        'Description of data and what this baby can do for ya'
-    ]),
+    ddk.Block(
+        width=20,
+        children=[
+            ddk.Card(id='Description',
+                     children=[
+                        ddk.CardHeader(title='How can this data be used and what questions can it answer?'),
+                        dcc.Markdown(
+                        '''
+                        1. How many companies have received federal funding (how many are new in 2019_20)?
+                        2. What is the total annual federal budget for IRAP funding?
+                        3. What is the National/Local budget for funding? What are the trends from year to year?
+                        4. How is the funding distributed? (Is it based on populations? Industry type? other factors?)
+                        5. How novel is my grant request compared to already funded projects?
+                        6. Which federal program should I apply to?
+                        7. How much funding should I apply for (compared to other similarly sized companies, research opportunities, jurisdictional budget limits)?
+                        '''
+                        ),
+                    ]
+            ),
 
-    ddk.ControlCard(width=20,id = 'map-controls',
+        ]
+    ),
+    ddk.Block(
+        width=60,
+        children=[
+            ddk.Card(
+                padding=0,
+                children=[
+                    ddk.CardHeader(title='Geographic Representation of Funding'),
+                    ddk.Graph(id='map-graph'),
+                ]
+            ),
+            #ddk.Card(
+            #            children=[
+            #                ddk.CardHeader(title='Funding Timeline'),
+            #                ddk.Graph(id='timeline-graph'),
+            #            ]
+            #        ),
+            ddk.Block(
+                width=60,
+                children=[
+                    ddk.Card(
+                        children=[
+                            ddk.CardHeader(title='Funding by donor'),
+                            #dash_table.DataTable(id='donor-table'),
+                            ddk.Graph(id='donor-graph')
+                        ]
+                    ),
+                ]
+            ),
+            ddk.Block(
+                width=40,
+                children=[
+                    ddk.Card(
+                        children=[
+                         ddk.CardHeader(title='Total Funding'),
+                         ddk.Graph(id='treemap')
+                     ]
+                    ),
+                ]
+            )
+        ]
+    ),
+    ddk.Block(
+        width=20,
+        children=[
+
+            ddk.ControlCard(id='map-controls',
+                    children=[
+                        ddk.CardHeader(title='Search for Funding'),
+                        ddk.ControlItem(
+                            dcc.Dropdown(
+                                id = 'province-dropdown',
+                                options=[
+                                    {'label':i,'value':i}
+                                    for i in province_list
+                                ],
+                                multi=True,
+                                clearable = False,
+                                value=['ON'] #province_list
+                            ),
+                            label='Province'
+                        ),
+                        ddk.ControlItem(
+                            dcc.Dropdown(
+                                id = 'naics-dropdown',
+                                options=[
+                                    {'label':i,'value':i}
+                                    for i in naics_sect_list
+                                ],
+                                multi=True,
+                                value=['Manufacturing'],
+                                clearable = False,
+                            ),
+                            label='NAICS Sector'
+                        ),
+                        ddk.ControlItem(
+                            dcc.Dropdown(
+                                id = 'year-dropdown',
+                                options=[
+                                    {'label':i,'value':i}
+                                    for i in year_list
+                                ],
+                                multi=False,
+                                clearable = False,
+                                value='2019_20 Only'
+                            ),
+                            label='Year'
+                        ),
+                        ddk.ControlItem(
+                            dcc.Dropdown(
+                                id = 'donor-dropdown',
+                                options=[
+                                    {'label': i, 'value': i}
+                                    for i in donor_list
+                                ],
+                                multi=True, #allow for multiple selections
+                                value=donor_list, #default value on app load
+                                clearable = False,
+                            ),
+                            label='Donor Program'
+                        ),
+                    ]
+            ),
+
+        ]
+    ),
+    ]
+)
+
+"""
+    ddk.ControlCard(width=20, id = 'map-controls',
         children=[
             ddk.ControlItem(
                 dcc.Dropdown(
                     id = 'donor-dropdown',
                     options=[
-                        {'label':i,'value':i}
+                        {'label': i, 'value': i}
                         for i in donor_list
                     ],
                     multi=True, #allow for multiple selections
@@ -103,276 +323,48 @@ app.layout = ddk.App([
             ),
         ]
     ),
-
+       ddk.Card(width = 40, children=[
+        ddk.CardHeader(title='Provincial Treemap'),
+        ddk.Graph(id='treemap')
+    ]),
     ddk.Card(width = 80, children=[
         ddk.CardHeader(title='Geographic Representation of Funding'),
         dcc.Graph(id='map-graph')
     ]),
-
-    ddk.Card(width = 40, children=[
-        ddk.CardHeader(title='Provincial Treemap'),
-        dcc.Graph(id='treemap')
-    ]),
-
-    ddk.Card(width = 60, children=[
-        ddk.CardHeader(title='Funding Timeline'),
-        dcc.Graph(id='timeline-graph')
-    ]),
-
     ddk.Card(width = 50, children=[
         ddk.CardHeader(title='Donor Distribution of Funding'),
         dcc.Graph(id='donor-graph')
     ]), 
+"""
 
-]) # end of app.layout
+
+
+# end of app.layout
 
 @app.callback(
-    [Output('map-graph','figure'),
-    Output('timeline-graph','figure'),
-    Output('treemap','figure')],
-    #Output('donor-graph','figure')],
-    [Input(component_id='donor-dropdown',component_property='value'),
-    Input('naics-dropdown','value'),
-    Input('year-dropdown','value'),
-    Input('province-dropdown','value')]
-) # NO BLANK LINES ALLOWED B.W. CALLBACK & 'update' METHOD
-def update_app(input_donor,input_naics,input_year,input_province):
-    """
-    Note that it is now impossible to have a 'None' selection for any 
-    of the dropdown menus, this simplifies callback possibilities.
-    Parameter is set in control cards in app.layout
-    """
-    def print_mapbox(dataframe1):
-        figure = px.scatter_mapbox(dataframe1, 
-        title='Location & Corporation of IRAP Grant',
-        hover_name='Company_Name', 
-        hover_data={'Funding_Program_Name':True,'Latitude':False,'Longitude':False},  
-        lat="Latitude", lon="Longitude",
-        #template='plotly_dark',
-        #color ='naics_sect', #color_continuous_scale=px.colors.sequential.Darkmint,
-        #color ='NAICS_Sector', color_continuous_scale=px.colors.sequential.Darkmint,
-        mapbox_style='dark',
-        size_max=45, opacity=.8, zoom=4, size='$_Amount'
-        )
+    [Output('treemap', 'figure'),  Output('map-graph', 'figure')], #Output('timeline-graph', 'figure')],
+    [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
+)
 
-        figure.update_layout(
-        autosize=True,
-        hovermode='closest',
-        mapbox=dict(
-            accesstoken=mapbox_token,
-            bearing=0,
-            #center=dict(lat=50.44,lon=-91.009), #as data is altered, will refresh to same 'center'
-            pitch=0,
-            zoom=2.9
-        ),
-        )
-        return figure
-    
-    def print_timeline(dataframe1):
-        timetable = pd.pivot_table(dataframe1, 
-            values='$_Amount', 
-            index=['Company_ID', 'Funding_Program_Name'], 
-            columns=['Start_Date'], 
-            aggfunc=np.sum
-        ).sum()
-
-        figure = px.scatter(timetable.reset_index().rename(columns={0: "Total_Funding_$"}), 
-            x='Start_Date', 
-            y='Total_Funding_$', 
-            range_x=['2016-07-01','2020-12-31']
-        )
-        return figure
-
-    def print_treemap(dataframe1):
-        figure = px.treemap(dataframe1.dropna(), 
-            path=['Province', 'naics_sect', 'Funding_Program_Name'], 
-            values='$_Amount',
-            hover_data={'$_Amount':True} #cannot turn off values not in dataframe (ex. id, labels,
-            # perhaps can turn off hover in general, and display $_Amount as text instead
-            #width=400,
-        )
-        return figure
-
-    """
-    def print_donor_graph(dataframe1):
-        table_fundingtype = pd.pivot_table(dataframe1, 
-            values='$_Amount', 
-            index=['Company_ID'],# 'Start_Date'],
-            columns=['Funding_Program_Name'], aggfunc=np.sum),
-    
-        figure = go.Figure()
-
-        for donor in dataframe1['Funding_Program_Name'].unique().tolist():
-            figure.add_trace(go.Box(x=table_fundingtype[donor], name = donor))
-
-        return figure
-    """
-
-    print("Swedish")
+def update_app(input_donor, input_naics, input_year, input_province):
     dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
-    print("Finnish")
-
-    return print_mapbox(dff), print_timeline(dff), print_treemap(dff)#, print_donor_graph(dff)
+    return print_treemap(dff), print_mapbox(dff)#, print_timeline(dff)
 
 
+@app.callback(
+    Output('donor-graph','figure'),#, Output('donor-table', 'children')],
+    [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
+)
 
+def update_app(input_donor, input_naics, input_year, input_province):
+    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
 
-
-"""
-
-    def print_donor_graph(dataframe1):
-        dataframe2 = dataframe1
-
-        figure = px.box(dataframe2,x='$_Amount',y='Funding_Program_Name')   
-
-        #figure.update_traces()
-
-        return figure
-
-"""
-
-
-
-
-
-
-
-
-
-#######################################################################################
-#######################################################################################
-#######################################################################################
-#######################################################################################
-
-"""
-        figure.add_trace(go.Box(x=table_fundingtype['CanExport'], 
-                                                name='CanExport')),
-        figure.add_trace(go.Box(x=table_fundingtype['CanExport SMEs'], 
-                                                name='CanExport SMEs')),
-        figure.add_trace(go.Box(x=table_fundingtype['Canada Accelerator and Incubator Program'], 
-                                                name='Can. Accelerator Program')),
-        figure.add_trace(go.Box(x=table_fundingtype['Canadian International Innovation Program'], 
-                                                name='Canadian International Innovation Program')),
-        figure.add_trace(go.Box(x=table_fundingtype['Eureka/Eurostar'], 
-                                                name='Eureka/Eurostar')),
-        figure.add_trace(go.Box(x=table_fundingtype['IRAP - Contributions to Firms'], 
-                                                name='IRAP – Contributions to Firms')),
-        figure.add_trace(go.Box(x=table_fundingtype['IRAP - Contributions to Organizations'], 
-                                                name='IRAP – Contributions to Organizations')),
-        figure.add_trace(go.Box(x=table_fundingtype['IRAP - Green Youth Employment'], 
-                                                name='IRAP – Green Youth Employment Program')),
-        figure.add_trace(go.Box(x=table_fundingtype['IRAP - Youth Employment'], 
-                                                name='IRAP – Youth Employment Program')),
-        figure.add_trace(go.Box(x=table_fundingtype['Innovative Solutions Canada'], 
-                                                name='Innovative Solutions Canada')), 
-"""
-
+    table_fundingtype = pd.pivot_table(dff, values='$_Amount',
+                                       index=['Company_ID', 'Start_Date'],
+                                       # ,'naics_sect', 'City', 'Province', 'Start Date', 'Projected Spend Date'
+                                       columns=['Funding_Program_Name'], aggfunc=np.sum)
+    return print_donor_graph(table_fundingtype)#, print_donor_table(table_fundingtype)
 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
-
-
-
-"""
-    TO USE THIS, CHANGE MULTI ATTR. TO TRUE FOR DONOR-DROPDOWN
-
-    if input_donor == None and input_year == None and input_province == None:
-        print("1")
-        dff = df
-    elif input_donor == None and input_year == None:
-        print("2a")
-        dff = df[(df.Prov_Abbreviation == input_province)]
-        print("2b")
-    elif input_donor == None and input_province == None:
-        print("3a")
-        dff = df[(df._merge == input_year)] 
-        print("3b")
-    elif input_year == None and input_province == None: 
-        print("4a")
-        dff = df[(df.Funding_Program_Name.isin(input_donor))]
-        print("4b")
-    elif input_donor == None:
-        print("5a")
-        dff = df[(df.Prov_Abbreviation == input_province) & (df._merge == input_year)] 
-        print("5b")
-    elif input_year == None:
-        print("6a")
-        dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.Prov_Abbreviation == input_province)]  
-        print("6b")  
-    elif input_province == None:
-        print("7a")
-        dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df._merge == input_year)]
-        print("7b")
-    elif input_donor != None and input_year != None and input_province != None:
-        print("8a")
-        dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
-        print("8b")
-    elif input_donor == None and input_year == None and input_province == None:
-        print("1-2")
-        dff = df
-
-    return print_mapbox(dff)#, print_timeline(dff)
-"""
-
-
-
-
-
-#dff = df[(df._merge == input_year) & (df.Prov_Abbreviation == input_province)]
-#dff = df[(df.Funding_Program_Name == input_donor) & (df._merge == input_year)] 
-#dff = df[(df.Funding_Program_Name == input_donor) & (df.Prov_Abbreviation == input_province)]
-#dff = df[(df.Funding_Program_Name == input_donor) & (df._merge == input_year) & (df.Prov_Abbreviation == input_province)] 
-
-
-
-
-
-
-"""
-TABBSSS
-
-tab_style = {"fontWeight": "bold"}
-
-tabs = dcc.Tabs(
-        id="tabs",
-        value="tab-1",
-        children=[
-            dcc.Tab(
-                label="Text Tab",
-                value="tab-1",
-                style=tab_style,
-                selected_style=tab_style,
-            ),
-            dcc.Tab(
-                label="Table Tab",
-                value="tab-2",
-                style=tab_style,
-                selected_style=tab_style,
-            ),
-        ],
-    )
-
-
-# APP LAYOUT #
-app.layout = ddk.App(
-    [
-        ddk.Header( # for all tabs
-            [
-                ############# LOGO DOESN'T LOAD for some reason (comment or as is)  ##################
-                ddk.Logo(src="6synctLogo.png"),#ddk.Logo(src=app.get_asset_url("6synctLogo.png")),
-                ddk.Title("Government Funding in Canada"),
-            ]
-        ),
-        ddk.Card(children=tabs),
-        ddk.Card(id="update-tab"),
-    ]
-)
-
-@app.callback(Output("update-tab", "children"), [Input("tabs", "value")])
-def render_tabs(tab):
-    if tab == "tab-1":
-        return tab1_control
-    elif tab == "tab-2":
-        return tab2_content
-"""
