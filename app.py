@@ -10,6 +10,8 @@ import dash_table
 from grantData import *
 from mapbox_token import *
 
+# theme.js supplies some additional styling, but orange is hard-coded
+
 # REQUIRED FOR DEPLOYMENT
 app = dash.Dash(__name__)
 server = app.server  # expose server variable for Procfile
@@ -52,7 +54,7 @@ def print_mapbox(dataframe):
                                opacity=.8,
                                zoom=4,
                                size='$_Amount',
-                               color_discrete_sequence=['orange']
+                               color_discrete_sequence=['#FF8827']
                                )
     figure.update_layout(
         autosize=True,
@@ -79,6 +81,7 @@ def print_timeline(dataframe):
     figure = px.bar(timetable.reset_index().rename(columns={0: "Total_Funding_$"}),
                         x='Year_Quarter',
                         y='Total_Funding_$',
+                        color_discrete_sequence=['#FF8827'], # automatic if theme.js is used (ddk feature)
                         #range_x=['2018-04-01', '2020-12-31']
                         )
     return figure
@@ -108,30 +111,22 @@ def print_donor_graph(dataframe):
 
     return figure
 
-
-# ddk.Card(
-#            children=[
-#                ddk.CardHeader(title='Funding Timeline'),
-#                ddk.Graph(id='timeline-graph'),
-#            ]
-#        ),
-
-app.layout = ddk.App(
-    [
+app.layout = ddk.App(show_editor=True,
+    children=[
     ddk.Header([
         ddk.Title('NRC IRAP - Corporate Funding in Canada from 2018-2020'),
 
-        #ddk.Logo("assets/6SYNCT Logo_Black.png",
-                 #style={
-                  #   "height": "40px",
-                  #   "align-self": "flex-end",
-                 #    "width": "auto",
-                 #   },
-                # ),
+        ddk.Logo("assets/6synctLogoBlack.png",
+            style={
+                "height": "30px",
+                "margin-right":"0px",
+                "width": "auto",
+            },
+        ),
 
-    ]),
+    ]), # end of ddk.Header
 
-    ddk.Block(
+    ddk.Block( # left-hand column
         width=20,
         children=[
             ddk.Card(id='Description',
@@ -157,8 +152,9 @@ app.layout = ddk.App(
                     ]
             ),
         ]
-    ),
-    ddk.Block(
+    ), # end of left-hand column
+
+    ddk.Block( # middle column
         width=60,
         children=[
             ddk.Card(
@@ -168,17 +164,10 @@ app.layout = ddk.App(
                     ddk.Graph(id='map-graph'),
                 ]
             ),
-            ddk.Card(
-                children=[
-                    ddk.CardHeader(title='Funding by donor'),
-                    ddk.Graph(id='donor-graph')
-                ]
-            ),
-            ddk.Card(
+                        ddk.Card( # Companies Dataframe Table
                         children=[
-                            ddk.CardHeader(title='Companies'),
-                            ddk.DataTable(
-                                id='companies-table',
+                            ddk.CardHeader(title='Companies Dataframe'),
+                            ddk.DataTable(id='companies-table',
                                 columns=[{"name": i, "id": i} for i in df[['Company_Name', 'Project', '$_Amount', 'Start_Date', 'Spend_Date']].columns],
                                 fill_width=False,
                                 filter_action='native',
@@ -212,20 +201,33 @@ app.layout = ddk.App(
                             ),
                         ]
             ),
-
-            ddk.Card(
+            ddk.Card( 
+                children=[
+                    ddk.CardHeader(title='Funding by donor'),
+                    ddk.Graph(id='donor-graph')
+                ]
+            ),
+            ddk.Card( # bar graph
                 children=[
                     ddk.CardHeader(title='Funding Commitments - by Start Date (YR/Q)'),
                     ddk.Graph(id='timeline-graph'),
                 ]
             ),
+            ddk.Card(
+                children=[
+                    ddk.CardFooter("Accessed at ")
+                    #dcc.Link(
+                    #    "Government link",
+                        #href = 
+                    #)
+                ]
+            )
         ]
-    ),
+    ), # end of middle column
 
-    ddk.Block(
+    ddk.Block( # right-hand column
         width=20,
         children=[
-
             ddk.ControlCard(id='map-controls',
                     children=[
                         ddk.CardHeader(title='Search for Funding'),
@@ -238,7 +240,7 @@ app.layout = ddk.App(
                                 ],
                                 multi=True,
                                 clearable = False,
-                                value=province_list #province_list
+                                value=province_list
                             ),
                             label='Province'
                         ),
@@ -262,9 +264,9 @@ app.layout = ddk.App(
                                     {'label':i,'value':i}
                                     for i in year_list
                                 ],
-                                multi=False,
+                                multi=True,
                                 clearable=False,
-                                value='2019_20 Only'
+                                value=['2019_20 Only']
                             ),
                             label='Year'
                         ),
@@ -275,41 +277,47 @@ app.layout = ddk.App(
                                     {'label': i, 'value': i}
                                     for i in donor_list
                                 ],
-                                multi=True, #allow for multiple selections
-                                value=donor_list, #default value on app load
+                                multi=True, # allow for multiple selections
+                                value=donor_list, # default value on app load
                                 clearable = False,
                             ),
                             label='Donor Program'
                         ),
+                        ddk.ControlItem(
+                            dcc.Input(
+                            id = 'project-input',
+                            maxLength=20,
+                            multiple=False,
+                            placeholder="enter keyword",
+                            type="text",
+                            disabled=True # DISABLED... for now!
+                            ),
+                            label='Project Search'
+                        )
+
                     ]
-            ),
+            ), # end of map-controls ControlCard
 
         ]
-    ),
-    ]
-)
-
-
-
-# end of app.layout
+    ), # end of right-hand column
+    
+    ] # end app.layout - children
+) # end of app.layout
 
 @app.callback(
     [Output('treemap', 'figure'),  Output('map-graph', 'figure'), Output('timeline-graph', 'figure')],
     [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
 )
-
-def update_app(input_donor, input_naics, input_year, input_province):
-    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
+def update_treemap_mapbox_timeline(input_donor, input_naics, input_year, input_province):
+    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge.isin(input_year)) & (df.Prov_Abbreviation.isin(input_province))]
     return print_treemap(dff), print_mapbox(dff), print_timeline(dff)
-
 
 @app.callback(
     Output('donor-graph','figure'),#, Output('donor-table', 'children')],
     [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
 )
-
-def update_app(input_donor, input_naics, input_year, input_province):
-    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
+def update_donorgraph(input_donor, input_naics, input_year, input_province):
+    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge.isin(input_year)) & (df.Prov_Abbreviation.isin(input_province))]
 
     table_fundingtype = pd.pivot_table(dff, values='$_Amount',
                                        index=['Company_ID', 'Start_Date'],
@@ -321,11 +329,11 @@ def update_app(input_donor, input_naics, input_year, input_province):
     Output('companies-table', 'data'),
     [Input('donor-dropdown', 'value'), Input('naics-dropdown', 'value'), Input('year-dropdown', 'value'), Input('province-dropdown', 'value')]
 )
-
-def update_app(input_donor, input_naics, input_year, input_province):
-    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge == input_year) & (df.Prov_Abbreviation.isin(input_province))]
+def update_table(input_donor, input_naics, input_year, input_province):
+    dff = df[(df.Funding_Program_Name.isin(input_donor)) & (df.naics_sect.isin(input_naics)) & (df._merge.isin(input_year)) & (df.Prov_Abbreviation.isin(input_province))]
     return dff.to_dict("rows")
 
 
+################################# MANDATORY SERVER CODE ##################################
 if __name__ == '__main__':
     app.run_server(debug=True)
