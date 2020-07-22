@@ -102,6 +102,14 @@ df.loc[(df.naics_sect == 'Information and cultural industries'),'naics_sect']='I
 df.loc[(df.naics_sect == 'Professional, scientific and technical services'),'naics_sect']='Prof., scientific & technical services'
 df.loc[(df.naics_sect == 'Mining, quarrying, and oil and gas extraction'),'naics_sect']='Mining, quarrying, oil, gas extract.'
 
+"""
+#ataset_comparison_companies.drop_duplicates(keep='first').set_index('Company_ID').reset_index()
+#df = df.drop_duplicates(keep='first',)
+"""
+
+# removes duplicated start date grants (some grants are duplicated, with only altered 'Spend_Date' values)
+df = df.loc[~df.Start_Date.duplicated(keep='first')]
+
 # Add column for Year and Quarter
 df.insert(loc=0, column='Year_Quarter', value=df['Start_Date'])
 df['Year_Quarter'] = pd.to_datetime(df['Year_Quarter'])
@@ -113,7 +121,12 @@ df['Project'] = df['Project'].str.lower()
 df['Detailed_Description'] = df['Detailed_Description'].str.lower()
 #df = df.applymap(lambda s:s.lower() if type(s) == str else s)
 
+
+
+# drop those pesky duplicates one more time
+#df = df.drop_duplicates(subset=['Start_Date','$_Amount'],keep='first',inplace=True)
 df = df.dropna()
+
 """
 ODDS AND ENDS
 
