@@ -108,7 +108,8 @@ df.loc[(df.naics_sect == 'Mining, quarrying, and oil and gas extraction'),'naics
 """
 
 # removes duplicated start date grants (some grants are duplicated, with only altered 'Spend_Date' values)
-df = df.loc[~df.Start_Date.duplicated(keep='first')]
+# df = df.loc[~df.Start_Date.duplicated(keep='first')]
+df = df.drop_duplicates(subset=['Start_Date', 'Project'], keep="last")
 
 # Add column for Year and Quarter
 df.insert(loc=0, column='Year_Quarter', value=df['Start_Date'])

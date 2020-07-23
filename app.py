@@ -44,7 +44,7 @@ def print_mapbox(dataframe):
     figure = px.scatter_mapbox(dataframe,
                                title='Location & Corporation of IRAP Grant',
                                hover_name='Company_Name',
-                               #hover_data={'Funding_Program_Name': True, 'Latitude': False, 'Longitude': False}, # This statement doesnt work -DFL
+                               hover_data=['Funding_Program_Name'],#: True, 'Latitude': False, 'Longitude': False}, # This statement doesnt work -DFL
                                lat="Latitude", lon="Longitude",
                                # template='plotly_dark',
                                # color ='naics_sect', #color_continuous_scale=px.colors.sequential.Darkmint,
@@ -111,11 +111,9 @@ def print_donor_graph(dataframe):
 
     return figure
 
-app.layout = ddk.App(show_editor=True,
+app.layout = ddk.App(show_editor=False,
     children=[
     ddk.Header([
-        ddk.Title('NRC IRAP - Corporate Funding in Canada from 2018-2020'),
-
         ddk.Logo("assets/6synctLogoBlack.png",
             style={
                 "height": "30px",
@@ -123,6 +121,7 @@ app.layout = ddk.App(show_editor=True,
                 "width": "auto",
             },
         ),
+        ddk.Title('NRC IRAP - Corporate Funding in Canada from 2018-2020'),
 
     ]), # end of ddk.Header
 
@@ -166,7 +165,7 @@ app.layout = ddk.App(show_editor=True,
             ),
                         ddk.Card( # Companies Dataframe Table
                         children=[
-                            ddk.CardHeader(title='Companies Dataframe'),
+                            ddk.CardHeader(title='Search by Company or Project Keyword'),
                             ddk.DataTable(id='companies-table',
                                 columns=[{"name": i, "id": i} for i in df[['Company_Name', 'Project', '$_Amount', 'Start_Date', 'Spend_Date']].columns],
                                 fill_width=False,
@@ -215,11 +214,14 @@ app.layout = ddk.App(show_editor=True,
             ),
             ddk.Card(
                 children=[
-                    ddk.CardFooter("Accessed at ")
-                    #dcc.Link(
-                    #    "Government link",
-                        #href = 
-                    #)
+                    ddk.CardFooter("Source Information:"),
+                    dcc.Link('Data Source: https://open.canada.ca/',
+                             href='https://open.canada.ca/',
+                    ),
+                    html.Br(),
+                    dcc.Link('Available under open government license: http://open.canada.ca/en/open-government-licence-canada',
+                             href='http://open.canada.ca/en/open-government-licence-canada',
+                    ),
                 ]
             )
         ]
